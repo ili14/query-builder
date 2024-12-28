@@ -1,5 +1,5 @@
 import "./App.css";
-import React, {useState} from "react";
+import React, {useCallback, useState} from "react";
 import {
     Box,
     Button,
@@ -16,10 +16,8 @@ import {
 import {PiFileSqlFill} from "react-icons/pi";
 import {FaTable} from "react-icons/fa";
 import {Editor} from "@monaco-editor/react";
-import 'beautiful-react-diagrams/styles.css';
-import {createSchema, Diagram, useSchema} from "beautiful-react-diagrams";
-import {} from "beautiful-react-diagrams"
-import {PortAlignment} from "beautiful-react-diagrams/@types/DiagramSchema";
+import DiagramSection from "./DiagramSection";
+
 
 
 function App(): JSX.Element {
@@ -41,7 +39,7 @@ function App(): JSX.Element {
                     </Grid>
                     <Grid className="cell" size={6}>
                         <Card variant={"outlined"} className='w-full h-full'>
-                            <DiagramSection/>
+                            <DiagramSection />
                         </Card>
                     </Grid>
                     <Grid className="cell" size={3}>
@@ -151,129 +149,6 @@ function MyEditor({}: MyEditorProps) {
         <Editor className="h-full" onChange={(value) => (setCode(value))} options={{wordWrap: "on",}}
                 defaultLanguage="sql" defaultValue="// some comment" value={code}/>
     </Box>
-}
-
-
-const initialSchema = createSchema({
-    nodes: [
-        {
-            id: 'node-1',
-            content: 'Start',
-            coordinates: [100, 150],
-            outputs: [
-                {id: 'port-1', alignment: 'right'},
-                {id: 'port-2', alignment: 'right'},
-            ],
-            disableDrag: true,
-            data: {
-                foo: 'bar',
-                count: 0,
-            }
-        },
-        {
-            id: 'node-2',
-            content: 'Middle',
-            coordinates: [300, 150],
-            inputs: [
-                {id: 'port-3', alignment: 'left'},
-                {id: 'port-4', alignment: 'left'},
-            ],
-            outputs: [
-                {id: 'port-5', alignment: 'right'},
-                {id: 'port-6', alignment: 'right'},
-            ],
-            data: {
-                bar: 'foo',
-            }
-        },
-        {
-            id: 'node-3',
-            content: 'End',
-            render: DiagramNode,
-            coordinates: [600, 150],
-            inputs: [
-                {id: 'port-7', alignment: 'left',},
-                {id: 'port-8', alignment: 'left'},
-            ],
-
-            data: {
-                foo: true,
-                bar: false,
-                some: {
-                    deep: {
-                        object: true,
-                    }
-                },
-            }
-        },
-    ],
-
-    links: [
-        {
-            input: 'port-1', readonly: true
-            , output: 'port-4'
-        },
-    ],
-
-});
-
-interface DiagramSectionProps {
-}
-
-function DiagramSection({}: DiagramSectionProps) {
-    // create diagrams schema
-    const [schema, {onChange, addNode}] = useSchema(initialSchema);
-
-    return <Box height={"100%"}>
-        <Button onClick={() => {
-            // addNode({})
-        }}>
-            addNode
-        </Button>
-        {/*
-        // @ts-ignore */}
-        <Diagram schema={schema} onChange={onChange}/>
-    </Box>
-}
-
-
-export type Port = {
-    id: string;
-    canLink?: Function;
-    alignment?: PortAlignment;
-};
-
-interface DiagramNodeProps {
-    inputs?: Port[],
-    data?: any
-}
-
-function DiagramNode({inputs, data}: DiagramNodeProps) {
-
-    console.log(data);
-
-    return <div className="ring-1">
-        test
-        <div style={{marginTop: '20px'}}>
-
-            {inputs?.map((Port) => {
-
-                return <>
-                    {/*
-                    //@ts-ignore*/}
-                    {React.cloneElement(Port, {
-                        style: {width: '50px', height: '25px', background: '#1B263B'},
-                        children: <>name</>,
-                        onMouseDown(e){
-                            e.preventDefault();
-                            e.preventDefault();
-                        }
-                    })}
-                </>
-            })}
-        </div>
-        {/*{inputs?.map(input => input)}*/}
-    </div>
 }
 
 export default App;
