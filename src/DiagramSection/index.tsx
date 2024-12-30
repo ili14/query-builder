@@ -82,6 +82,7 @@ export default function DiagramSection({tables}: DiagramSectionProps) {
                     target: rel.targetTable,
                     sourceHandle: column.name,
                     targetHandle: rel.targetColumn,
+                    animated: true
                 }
             }) ?? []) ?? []) ?? []
         });

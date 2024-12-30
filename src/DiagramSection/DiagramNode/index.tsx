@@ -23,7 +23,7 @@ const DiagramNode: React.FC<DiagramNodeProps> = ({data, isConnectable}) => {
                   */}
                 {data?.columns?.map((column, index) => {
                     return (
-                        <div className="column relative " key={index}>
+                        <div className="column relative flex items-center" key={index}>
                             <MyCheckbox checked={column.checked}/>
                             {column.name}
                             <Handle
@@ -35,7 +35,7 @@ const DiagramNode: React.FC<DiagramNodeProps> = ({data, isConnectable}) => {
                             <Handle
                                 type="source"
                                 id={column.name}
-                                position={Position.Left}
+                                position={Position.Right}
                                 isConnectable={isConnectable}
                             />
                         </div>)
