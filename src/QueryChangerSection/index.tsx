@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {DataGrid, GridColDef} from '@mui/x-data-grid';
 import {TableWithColumns} from "../App";
-import {FormControl, InputLabel, MenuItem, Select} from "@mui/material";
+import {Checkbox, FormControl, Input, InputLabel, MenuItem, Select, TextField} from "@mui/material";
 
 const rows = [
     {id: 1, name: 'Snow', alias: 'Jon', sortingType: 35, sortOrder: 0, GroupBy: true, Aggregate: ''},
@@ -43,13 +43,75 @@ interface ConfigurableColumnProperties {
     Aggregate?: AGGREGATE_TYPES;
 }
 
+function queryBuilder(configurableColumns: ConfigurableColumnProperties[]): string {
+    const selectColumns: { column: string, sortOrder: number }[] = [];
+    const groupByColumns: string[] = [];
+    const orderByClauses: { column: string, sortOrder: number, direction: string }[] = [];
+    let fromTables: Set<string> = new Set();
+
+    configurableColumns.forEach(column => {
+        // Keep track of all tables referenced
+        fromTables.add(column.tableName);
+
+        let columnExpression = `${column.tableName}.${column.columnName}`;
+
+        // Handle Aggregates
+        if (column.Aggregate) {
+            const aggregateFunction = column.Aggregate;
+            columnExpression = `${aggregateFunction}(${columnExpression})`;
+        }
+
+        // Handle Grouping
+        if (column.GroupBy) {
+            groupByColumns.push(columnExpression);
+        }
+
+        // Handle Sorting: collect sorting columns and their respective sortOrder
+        if (column.sortingType) {
+            const sortDirection = column.sortingType === SORTING_TYPES.ASC ? 'ASC' :
+                column.sortingType === SORTING_TYPES.DESC ? 'DESC' : '';
+            orderByClauses.push({column: columnExpression, sortOrder: column.sortOrder ?? 0, direction: sortDirection});
+        }
+
+        // Handle Alias
+        if (column.alias) {
+            columnExpression = `${columnExpression} AS "${column.alias}"`;
+        }
+
+        // Add the column expression and its sortOrder to selectColumns
+        selectColumns.push({column: columnExpression, sortOrder: column.sortOrder ?? 0});
+    });
+
+    // Sort selectColumns by sortOrder (ascending order)
+    selectColumns.sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Construct the SELECT clause with sorted selectColumns
+    const selectClause = `SELECT ${selectColumns.map(col => col.column).join(', ')}`;
+
+    // Construct the FROM clause (this will include all tables from `fromTables`)
+    const fromClause = `FROM ${Array.from(fromTables).join(', ')}`;
+
+    // Construct the GROUP BY clause if applicable
+    const groupByClause = groupByColumns.length > 0 ? `GROUP BY ${groupByColumns.join(', ')}` : '';
+
+    // Construct the ORDER BY clause if applicable
+    const orderByClause = orderByClauses.length > 0 ? `ORDER BY ${orderByClauses.map(order => `${order.column} ${order.direction}`).join(', ')}` : '';
+
+    // Combine everything to build the full query
+    let query = `${selectClause} ${fromClause} ${groupByClause} ${orderByClause}`;
+
+    return query.trim();
+}
+
+
 interface QueryChangerSectionProps {
     tablesWithColumns?: TableWithColumns[]
+    onChangeQuery: (query: string) => void
 }
 
 const paginationModel = {page: 0, pageSize: 5};
 
-const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns}) => {
+const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns, onChangeQuery}) => {
     const [configurableColumns, setConfigurableColumns] = useState<ConfigurableColumnProperties[]>([]);
 
     useEffect(() => {
@@ -74,9 +136,27 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns}) => {
     const columns: GridColDef[] = useMemo(() => ([
         {field: 'tableName', headerName: 'Table', width: 70},
         {field: 'columnName', headerName: 'Column', width: 70},
-        {field: 'alias', headerName: 'Alias', width: 130, type: 'string'},
         {
-            field: 'sortingType', headerName: 'Sorting Type', width: 200 , type: 'number',
+            field: 'alias', headerName: 'Alias', width: 130, type: 'string',
+            renderCell: (value) => {
+                const row = value.row as ConfigurableColumnProperties;
+                return <div className='p-1  flex items-center h-full'>
+                    <FormControl className={'w-full '} size="small">
+                        <Input placeholder="Alias" value={row.alias} onChange={(event) => {
+                            const value = (event.target.value);
+                            const newConfigurableColumns = configurableColumns.map((col) => {
+                                if (col.tableName === row.tableName && col.columnName === row.columnName)
+                                    return {...col, alias: value} as ConfigurableColumnProperties;
+                                return col;
+                            });
+                            setConfigurableColumns(newConfigurableColumns);
+                        }}/>
+                    </FormControl>
+                </div>
+            }
+        },
+        {
+            field: 'sortingType', headerName: 'Sorting Type', width: 200, type: 'number',
             renderCell: (value) => {
                 const row = value.row as ConfigurableColumnProperties;
                 return <div className='p-1  flex items-center h-full'>
@@ -90,10 +170,10 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns}) => {
                             label="Sorting Type"
                             onChange={(event, child) => {
                                 const value = event.target.value as SORTING_TYPES;
-                                alert(value)
-                                console.log(row)
                                 const newConfigurableColumns = configurableColumns.map((col) => {
-                                    return {...col, sortingType: value} as ConfigurableColumnProperties;
+                                    if (col.tableName === row.tableName && col.columnName === row.columnName)
+                                        return {...col, sortingType: value} as ConfigurableColumnProperties;
+                                    return col;
                                 });
                                 setConfigurableColumns(newConfigurableColumns);
                             }}
@@ -109,7 +189,23 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns}) => {
             field: 'sortOrder',
             headerName: 'Sort Order',
             type: 'number',
-            width: 90,
+            width: 200,
+            renderCell: (value) => {
+                const row = value.row as ConfigurableColumnProperties;
+                return <div className='p-1  flex items-center h-full'>
+                    <FormControl className={'w-full '} size="small">
+                        <TextField placeholder="Sort Order" variant="outlined" size="small" aria-valuemin={1}  type='number' value={row.sortOrder} onChange={(event) => {
+                            const value = Number(event.target.value) as number;
+                            const newConfigurableColumns = configurableColumns.map((col) => {
+                                if (col.tableName === row.tableName && col.columnName === row.columnName)
+                                    return {...col, sortOrder: value} as ConfigurableColumnProperties;
+                                return col;
+                            });
+                            setConfigurableColumns(newConfigurableColumns);
+                        }}/>
+                    </FormControl>
+                </div>
+            }
         },
         {
             field: 'groupBy',
@@ -117,9 +213,34 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns}) => {
             description: 'This column has a value getter and is not sortable.',
             sortable: false,
             width: 160,
-            valueGetter: (value, row) => `${row.firstName || ''} ${row.lastName || ''}`,
+            renderCell: (value) => {
+                const row = value.row as ConfigurableColumnProperties;
+
+
+                const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+                    const value = (event.target.checked) as boolean;
+                    const newConfigurableColumns = configurableColumns.map((col) => {
+                        if (col.tableName === row.tableName && col.columnName === row.columnName)
+                            return {...col, GroupBy: value} as ConfigurableColumnProperties;
+                        return col;
+                    });
+                    setConfigurableColumns(newConfigurableColumns);
+                };
+
+                return <div className='p-1  flex items-center h-full'>
+                    <FormControl className={'w-full '} size="small">
+                        <Checkbox onChange={handleChange}/>
+                    </FormControl>
+                </div>
+            }
         },
     ]), [configurableColumns]);
+
+    const query = useMemo(() => {
+        const query = queryBuilder(configurableColumns);
+        if(onChangeQuery) onChangeQuery(query);
+        return query;
+    }, [configurableColumns]);
 
 
     return (
@@ -127,8 +248,9 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns}) => {
             <DataGrid
                 rows={configurableColumns}
                 columns={columns}
-                onStateChange={(test) => console.log(test.rows)}
+                // onStateChange={(test) => console.log(test.rows)}
                 rowHeight={56}
+                getRowId={(row) => row.columnName + row.tableName}
                 // initialState={{ pagination: { paginationModel } }}
                 // pageSizeOptions={[5, 10]}
                 sx={{border: 0}}

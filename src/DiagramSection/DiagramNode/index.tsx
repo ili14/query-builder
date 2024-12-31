@@ -1,14 +1,21 @@
-import React, {HTMLAttributes} from 'react'
-import {Handle, Position} from "@xyflow/react";
+import React, {HTMLAttributes, useContext, useEffect} from 'react'
+import {Handle, Position, useReactFlow} from "@xyflow/react";
 import {Column} from "../../App";
+import {EntireDiagramSectionContext} from "../../Contexts/DiagramSectionContext";
 
 
 interface DiagramNodeProps {
-    data: { TableName: string, columns?: Column[], onCheck: (isCheck: boolean) => void, [key: string]: any };
+    data: { TableName: string, columns?: Column[], checked: boolean};
     isConnectable: boolean
 }
 
 const DiagramNode: React.FC<DiagramNodeProps> = ({data, isConnectable}) => {
+    const {onCheckSingleColumn} = useContext(EntireDiagramSectionContext)
+
+    useEffect(() => {
+        // if(data?.columns)
+        // console.log(data.columns[0].name,"============>",data?.columns[0].checked)
+    }, []);
 
     return (
         <div className='bg-white rounded-md ring-2 pb-2 '>
@@ -23,8 +30,10 @@ const DiagramNode: React.FC<DiagramNodeProps> = ({data, isConnectable}) => {
                   */}
                 {data?.columns?.map((column, index) => {
                     return (
-                        <div className="column relative flex items-center" key={index}>
-                            <MyCheckbox checked={column.checked}/>
+                        <div className="column relative flex items-center" key={column.name}>
+                            <MyCheckbox checked={column.checked} onChange={(e)=>{
+                                onCheckSingleColumn(data.TableName, column.name, (e.target as HTMLInputElement).checked)
+                            }}/>
                             {column.name}
                             <Handle
                                 type="target"
@@ -75,7 +84,7 @@ interface MyCheckboxProps extends HTMLAttributes<HTMLInputElement> {
 const MyCheckbox: React.FC<MyCheckboxProps> = ({checked, onChange, ...rest}) => {
 
     return <label className="inline-flex items-center space-x-2">
-        <input type="checkbox" id="checkbox" className="hidden peer" {...rest} />
+        <input type="checkbox" id="checkbox" className="hidden peer" {...rest} onChange={onChange} />
         <div
             className="w-5 h-5 border-2 border-gray-300 rounded-lg peer-checked:bg-blue-600 peer-checked:border-blue-600"></div>
         <span className="text-gray-700">{rest.children}</span>

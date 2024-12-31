@@ -1,5 +1,5 @@
 import "./App.css";
-import React, {useMemo, useState} from "react";
+import React, {useCallback, useMemo, useState} from "react";
 import {
     Box,
     Card,
@@ -18,6 +18,8 @@ import {Editor} from "@monaco-editor/react";
 import DiagramSection from "./DiagramSection";
 import SelectedTableSection from "./SelectedTableSection";
 import QueryChangerSection from "./QueryChangerSection";
+import {Context} from "react-zoom-pan-pinch";
+import {CheckSingleColumnHandler, EntireDiagramSectionContext} from "./Contexts/DiagramSectionContext";
 
 // ! this array is simulate of table with columns comes from server
 const listOfTablesWithColumns: TableWithColumns[] = [
@@ -182,11 +184,70 @@ function App(): JSX.Element {
     const [tables, setTables] = useState<Table[]>(listOfTables);
     const [diagramsTable, setDiagramsTable] = useState<TableWithColumns[]>([]);
     const [lastTableWithColumnsSelected, setLastTableWithColumnsSelected] = useState<Table | null>(null);
+    const [builtQuery, setbuiltQuery] = useState<string>('');
+
+    const draggingTableWithColumnsRef = React.useRef<TableWithColumns>(undefined);
+
     const queryingColumnsTables = useMemo(() => {
         return diagramsTable.map((table) => {
             return {...table, name: table.name, columns: table?.columns?.filter((column) => column.checked)}
         });
     }, [diagramsTable]);
+
+    const handleCheckSingleColumn: CheckSingleColumnHandler = useCallback((tableName, columnName, checked) => {
+        console.log('checked', tableName, columnName, checked);
+        setDiagramsTable(() => {
+            const newTables = diagramsTable.map((table) => {
+                if (table.name === tableName) {
+                    const newColumns = table?.columns?.map((column) => {
+                        if (column.name === columnName) {
+                            return {...column, checked};
+                        }
+                        return column;
+                    });
+                    return {...table, columns: newColumns};
+                }
+                return table;
+            });
+            return newTables;
+        });
+    }, [diagramsTable]);
+
+    const handleQueryChange = useCallback((query: string) => {
+        setbuiltQuery(query);
+    }, []);
+
+    const getTableWithColumns = useCallback((table: Table) => {
+        // Todo replace bellow line must be replaced with api call and get Table from server
+        const newTableWithColumns = listOfTablesWithColumns.find((t) => t.name === table.name);
+        return newTableWithColumns;
+    }, []);
+
+    const updateDiagramWithTableWithColumns = useCallback((tableWithColumns?: TableWithColumns) => {
+        if (tableWithColumns) {
+            setLastTableWithColumnsSelected(tableWithColumns);
+            if (diagramsTable.some((t) => t.name === tableWithColumns.name)) {
+                const newTables = diagramsTable.filter((t) => t.name !== tableWithColumns.name);
+                setDiagramsTable(newTables);
+            } else {
+                const newTables = [...diagramsTable, tableWithColumns];
+                setDiagramsTable(newTables);
+            }
+        } else {
+            alert('table not found');
+        }
+    }, [diagramsTable]);
+
+    const handleTablesSectionDragStart = useCallback((table: Table) => {
+        const newTableWithColumns = getTableWithColumns(table);
+        if (newTableWithColumns)
+            draggingTableWithColumnsRef.current = newTableWithColumns;
+    }, [getTableWithColumns]);
+
+    const handleDiagramSectionDrop = useCallback(() => {
+        if (draggingTableWithColumnsRef?.current)
+            updateDiagramWithTableWithColumns(draggingTableWithColumnsRef.current)
+    }, [updateDiagramWithTableWithColumns]);
 
     return (
         <Box>
@@ -210,30 +271,26 @@ function App(): JSX.Element {
                                         setLastTableWithColumnsSelected(newTableWithColumns);
                                     }
                                 }}
+                                onDragItemStart={handleTablesSectionDragStart}
                                 onDoubleClickTable={(table) => {
-                                    const newTableWithColumns = listOfTablesWithColumns.find((t) => t.name === table.name);
+                                    const newTableWithColumns = getTableWithColumns(table);
                                     if (newTableWithColumns) {
                                         setLastTableWithColumnsSelected(newTableWithColumns);
-                                        if (diagramsTable.some((t) => t.name === newTableWithColumns.name)) {
-                                            const newTables = diagramsTable.filter((t) => t.name !== newTableWithColumns.name);
-                                            setDiagramsTable(newTables);
-                                        } else {
-                                            const newTables = [...diagramsTable, newTableWithColumns];
-                                            setDiagramsTable(newTables);
-                                        }
-                                    } else {
-                                        alert('table not found');
+                                        updateDiagramWithTableWithColumns(newTableWithColumns);
                                     }
                                 }}/>
                         </Card>
                     </Grid>
                     <Grid className="cell" size={6}>
                         <Card variant={"outlined"} className='w-full h-full'>
-                            <DiagramSection tables={diagramsTable}/>
+                            <EntireDiagramSectionContext.Provider
+                                value={{onCheckSingleColumn: handleCheckSingleColumn}}>
+                                <DiagramSection onDrop={handleDiagramSectionDrop} tables={diagramsTable}/>
+                            </EntireDiagramSectionContext.Provider>
                         </Card>
                     </Grid>
                     <Grid className="cell" size={3}>
-                        <Card variant={"outlined"} className='w-full h-full'><MyEditor/></Card>
+                        <Card variant={"outlined"} className='w-full h-full'><MyEditor value2={builtQuery}/></Card>
                     </Grid>
                 </Grid>
                 <Grid container spacing={2} height={'39%'}>
@@ -242,7 +299,9 @@ function App(): JSX.Element {
                             tableWithColumns={lastTableWithColumnsSelected}/></Card>
                     </Grid>
                     <Grid className="cell h-full" size={9}>
-                        <Card variant={"outlined"} className='w-full h-full'><QueryChangerSection tablesWithColumns={queryingColumnsTables} /></Card>
+                        <Card variant={"outlined"} className='w-full h-full'><QueryChangerSection
+                            onChangeQuery={handleQueryChange}
+                            tablesWithColumns={queryingColumnsTables}/></Card>
                     </Grid>
                 </Grid>
             </Box>
@@ -274,10 +333,11 @@ export type Column = {
 interface TableListSectionProps {
     onClickTable?: (table: Table) => void;
     onDoubleClickTable?: (table: Table) => void;
+    onDragItemStart?: (table: Table) => void;
     tables?: Table[];
 }
 
-function TableListSection({onClickTable, onDoubleClickTable, tables}: TableListSectionProps) {
+function TableListSection({onClickTable, onDoubleClickTable, onDragItemStart, tables}: TableListSectionProps) {
     return <>
         <List sx={{maxHeight: '100%'}} className={'!overflow-auto'} subheader={
             <ListSubheader component="div" id="nested-list-subheader">
@@ -289,6 +349,10 @@ function TableListSection({onClickTable, onDoubleClickTable, tables}: TableListS
                 return (
                     <ListItem
                         key={index}
+                        onDragStart={() => {
+                            if (onDragItemStart)
+                                onDragItemStart(table)
+                        }}
                         onDoubleClick={() => {
                             if (onDoubleClickTable)
                                 onDoubleClickTable(table);
@@ -317,14 +381,14 @@ function TableListSection({onClickTable, onDoubleClickTable, tables}: TableListS
 }
 
 interface MyEditorProps {
-
+    value2?: string
 }
 
-function MyEditor({}: MyEditorProps) {
+function MyEditor({value2}: MyEditorProps) {
     const [code, setCode] = useState<string | undefined>('SELECT * FROM users WHERE id > 10 AND email LIKE "%example.com%"');
     return <Box height={"100%"}>
-        <Editor className="h-full" onChange={(value) => (setCode(value))} options={{wordWrap: "on",}}
-                defaultLanguage="sql" defaultValue="// some comment" value={code}/>
+        <Editor className="h-full" options={{wordWrap: "on",}}
+                defaultLanguage="sql" defaultValue="// some comment" value={value2}/>
     </Box>
 }
 

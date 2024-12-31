@@ -17,17 +17,17 @@ export interface MyNode {
     id: string,
     position: { x: number, y: number },
     type: 'DiagramNode',
-    data: { TableName: string, columns?: Column[], }
+    data: { TableName: string, columns?: Column[], checked?: boolean }
 }
 
 const initialNodes: MyNode[] = [
     {
         id: '1', position: {x: 0, y: 0},
-        type: 'DiagramNode', data: {TableName: '14', columns: []}
+        type: 'DiagramNode', data: {TableName: '14', columns: [], checked: false}
     },
     {
         id: '2', position: {x: 0, y: 100},
-        type: 'DiagramNode', data: {TableName: '12', columns: []}
+        type: 'DiagramNode', data: {TableName: '12', columns: [], checked: false}
     },
 ];
 
@@ -44,13 +44,14 @@ const initialEdges: MyEdge[] = [{id: 'e1-2', source: '2', target: '1', sourceHan
 
 interface DiagramSectionProps {
     tables: TableWithColumns[]
+    onDrop: React.DragEventHandler<HTMLDivElement>;
 }
 
 const nodeTypes = {
     DiagramNode: DiagramNode
 }
 
-export default function DiagramSection({tables}: DiagramSectionProps) {
+export default function DiagramSection({tables, onDrop}: DiagramSectionProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -71,7 +72,7 @@ export default function DiagramSection({tables}: DiagramSectionProps) {
                 id: table.name,
                 position: position,
                 type: "DiagramNode",
-                data: {TableName: table.name, columns: table.columns},
+                data: {TableName: table.name, columns: table.columns,},
             }) as MyNode
         }));
         const newEdges: MyEdge[] = tables.flatMap((table) => {
@@ -82,7 +83,7 @@ export default function DiagramSection({tables}: DiagramSectionProps) {
                     target: rel.targetTable,
                     sourceHandle: column.name,
                     targetHandle: rel.targetColumn,
-                    animated: true
+                    animated: true,
                 }
             }) ?? []) ?? []) ?? []
         });
@@ -90,16 +91,12 @@ export default function DiagramSection({tables}: DiagramSectionProps) {
         setNodes(myNodes);
         setEdges(newEdges);
 
-    }, [ tables]);
+    }, [tables]);
 
-    return <Box height={"100%"}>
-        <Button onClick={() => {
-            const t = initialEdges.map((edge) => ({...edge, source: '1', target: '2'}));
-            console.log(t)
-            setEdges(t)
-        }}>
-            addNode
-        </Button>
+
+    return <Box height={"100%"} onDragOver={(e) => {
+        e.preventDefault()
+    }} onDrop={onDrop}>
         <ReactFlow
             nodes={nodes}
             edges={edges}
