@@ -46,6 +46,7 @@ interface ConfigurableColumnProperties {
 function queryBuilder(configurableColumns: ConfigurableColumnProperties[]): string {
     const selectColumns: { column: string, sortOrder: number }[] = [];
     const groupByColumns: string[] = [];
+    const AggrColumns: string[] = [];
     const orderByClauses: { column: string, sortOrder: number, direction: string }[] = [];
     let fromTables: Set<string> = new Set();
 
@@ -134,8 +135,8 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns, onChangeQ
 
 
     const columns: GridColDef[] = useMemo(() => ([
-        {field: 'tableName', headerName: 'Table', width: 70},
-        {field: 'columnName', headerName: 'Column', width: 70},
+        {field: 'tableName', headerName: 'Table', width: 130},
+        {field: 'columnName', headerName: 'Column', width: 130},
         {
             field: 'alias', headerName: 'Alias', width: 130, type: 'string',
             renderCell: (value) => {
@@ -194,7 +195,8 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns, onChangeQ
                 const row = value.row as ConfigurableColumnProperties;
                 return <div className='p-1  flex items-center h-full'>
                     <FormControl className={'w-full '} size="small">
-                        <TextField placeholder="Sort Order" variant="outlined" size="small" aria-valuemin={1}  type='number' value={row.sortOrder} onChange={(event) => {
+                        <TextField placeholder="Sort Order" variant="outlined" size="small" aria-valuemin={1}
+                                   type='number' value={row.sortOrder} onChange={(event) => {
                             const value = Number(event.target.value) as number;
                             const newConfigurableColumns = configurableColumns.map((col) => {
                                 if (col.tableName === row.tableName && col.columnName === row.columnName)
@@ -234,11 +236,62 @@ const Index: React.FC<QueryChangerSectionProps> = ({tablesWithColumns, onChangeQ
                 </div>
             }
         },
+
+        {
+            field: 'Aggregate',
+            headerName: 'Aggregate',
+            description: 'This column has a value getter and is not sortable.',
+            sortable: false,
+            width: 300,
+            renderCell: (value) => {
+                const row = value.row as ConfigurableColumnProperties;
+
+
+                const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+                    const value = (event.target.checked) as boolean;
+                    const newConfigurableColumns = configurableColumns.map((col) => {
+                        if (col.tableName === row.tableName && col.columnName === row.columnName)
+                            return {...col, GroupBy: value} as ConfigurableColumnProperties;
+                        return col;
+                    });
+                    setConfigurableColumns(newConfigurableColumns);
+                };
+
+                return <div className='p-1  flex items-center h-full'>
+                    <FormControl className={'w-full '} size="small">
+                        <InputLabel id="demo-simple-select-label">Sorting Type</InputLabel>
+                        <Select
+                            labelId="demo-simple-select-label"
+                            className={'h-full'}
+                            id="demo-simple-select"
+                            value={row.Aggregate}
+                            label="Sorting Type"
+                            onChange={(event, child) => {
+                                const value = event.target.value as AGGREGATE_TYPES;
+                                const newConfigurableColumns = configurableColumns.map((col) => {
+                                    if (col.tableName === row.tableName && col.columnName === row.columnName)
+                                        return {
+                                            ...col,
+                                            Aggregate: value
+                                        } as ConfigurableColumnProperties;
+                                    return col;
+                                });
+                                setConfigurableColumns(newConfigurableColumns);
+                            }}
+                        >
+                            {Object.values(AGGREGATE_TYPES).map(type => <MenuItem value={type}>{type}</MenuItem>)}
+
+                        </Select>
+                    </FormControl>
+                </div>
+            }
+        },
     ]), [configurableColumns]);
 
     const query = useMemo(() => {
         const query = queryBuilder(configurableColumns);
-        if(onChangeQuery) onChangeQuery(query);
+        if (onChangeQuery) onChangeQuery(query);
+        console.log(configurableColumns);
         return query;
     }, [configurableColumns]);
 

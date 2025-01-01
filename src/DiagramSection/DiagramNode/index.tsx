@@ -1,21 +1,24 @@
-import React, {HTMLAttributes, useContext, useEffect} from 'react'
+import React, {HTMLAttributes, useContext, useEffect, useMemo} from 'react'
 import {Handle, Position, useReactFlow} from "@xyflow/react";
 import {Column} from "../../App";
 import {EntireDiagramSectionContext} from "../../Contexts/DiagramSectionContext";
+import {Divider} from "@mui/material";
 
 
 interface DiagramNodeProps {
-    data: { TableName: string, columns?: Column[], checked: boolean};
+    data: { TableName: string, columns?: Column[], checked: boolean };
     isConnectable: boolean
 }
 
 const DiagramNode: React.FC<DiagramNodeProps> = ({data, isConnectable}) => {
-    const {onCheckSingleColumn} = useContext(EntireDiagramSectionContext)
+    const {onCheckSingleColumn, onCheckEntireTableColumns} = useContext(EntireDiagramSectionContext)
 
     useEffect(() => {
         // if(data?.columns)
         // console.log(data.columns[0].name,"============>",data?.columns[0].checked)
     }, []);
+
+    const isAllSelected = useMemo(() => (data?.columns?.every((column) => column.checked)), [data?.columns]);
 
     return (
         <div className='bg-white rounded-md ring-2 pb-2 '>
@@ -29,9 +32,10 @@ const DiagramNode: React.FC<DiagramNodeProps> = ({data, isConnectable}) => {
                 ! COLUMN
                   */}
                 {data?.columns?.map((column, index) => {
+                    console.log(column.checked)
                     return (
                         <div className="column relative flex items-center" key={column.name}>
-                            <MyCheckbox checked={column.checked} onChange={(e)=>{
+                            <MyCheckbox checked={column.checked} onChange={(e) => {
                                 onCheckSingleColumn(data.TableName, column.name, (e.target as HTMLInputElement).checked)
                             }}/>
                             {column.name}
@@ -49,6 +53,13 @@ const DiagramNode: React.FC<DiagramNodeProps> = ({data, isConnectable}) => {
                             />
                         </div>)
                 })}
+                <Divider/>
+                <div className="column relative flex items-center">
+                    <MyCheckbox checked={isAllSelected} onChange={(e) => {
+                        onCheckEntireTableColumns(data.TableName, (e.target as HTMLInputElement).checked)
+                    }}/>
+                    Select All
+                </div>
                 {/*
                 ! COLUMN
                   */}
@@ -84,7 +95,7 @@ interface MyCheckboxProps extends HTMLAttributes<HTMLInputElement> {
 const MyCheckbox: React.FC<MyCheckboxProps> = ({checked, onChange, ...rest}) => {
 
     return <label className="inline-flex items-center space-x-2">
-        <input type="checkbox" id="checkbox" className="hidden peer" {...rest} onChange={onChange} />
+        <input type="checkbox" id="checkbox" checked={checked} className="hidden peer" {...rest} onChange={onChange}/>
         <div
             className="w-5 h-5 border-2 border-gray-300 rounded-lg peer-checked:bg-blue-600 peer-checked:border-blue-600"></div>
         <span className="text-gray-700">{rest.children}</span>

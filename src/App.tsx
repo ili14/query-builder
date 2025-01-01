@@ -19,7 +19,11 @@ import DiagramSection from "./DiagramSection";
 import SelectedTableSection from "./SelectedTableSection";
 import QueryChangerSection from "./QueryChangerSection";
 import {Context} from "react-zoom-pan-pinch";
-import {CheckSingleColumnHandler, EntireDiagramSectionContext} from "./Contexts/DiagramSectionContext";
+import {
+    CheckEntireTableColumnsHandler,
+    CheckSingleColumnHandler,
+    EntireDiagramSectionContext
+} from "./Contexts/DiagramSectionContext";
 
 // ! this array is simulate of table with columns comes from server
 const listOfTablesWithColumns: TableWithColumns[] = [
@@ -213,6 +217,24 @@ function App(): JSX.Element {
         });
     }, [diagramsTable]);
 
+    const handleCheckEntireTableColumns: CheckEntireTableColumnsHandler = useCallback((tableName, checked) => {
+        console.log('checked', tableName, checked);
+        setDiagramsTable(() => {
+            const newTables = diagramsTable.map((table) => {
+                if (table.name === tableName) {
+                    const newColumns = table?.columns?.map((column) => {
+
+                        return {...column, checked};
+
+                    });
+                    return {...table, columns: newColumns};
+                }
+                return table;
+            });
+            return newTables;
+        });
+    }, [diagramsTable]);
+
     const handleQueryChange = useCallback((query: string) => {
         setbuiltQuery(query);
     }, []);
@@ -284,7 +306,10 @@ function App(): JSX.Element {
                     <Grid className="cell" size={6}>
                         <Card variant={"outlined"} className='w-full h-full'>
                             <EntireDiagramSectionContext.Provider
-                                value={{onCheckSingleColumn: handleCheckSingleColumn}}>
+                                value={{
+                                    onCheckSingleColumn: handleCheckSingleColumn,
+                                    onCheckEntireTableColumns: handleCheckEntireTableColumns
+                                }}>
                                 <DiagramSection onDrop={handleDiagramSectionDrop} tables={diagramsTable}/>
                             </EntireDiagramSectionContext.Provider>
                         </Card>
