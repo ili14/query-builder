@@ -45,8 +45,9 @@ interface ConfigurableColumnProperties {
 
 function queryBuilder(configurableColumns: ConfigurableColumnProperties[]): string {
     const selectColumns: { column: string, sortOrder: number }[] = [];
+    const selectAggregateColumns: { column: string, sortOrder: number }[] = [];
     const groupByColumns: string[] = [];
-    const AggrColumns: string[] = [];
+    const AggregateByColumns: string[] = [];
     const orderByClauses: { column: string, sortOrder: number, direction: string }[] = [];
     let fromTables: Set<string> = new Set();
 
@@ -55,11 +56,14 @@ function queryBuilder(configurableColumns: ConfigurableColumnProperties[]): stri
         fromTables.add(column.tableName);
 
         let columnExpression = `${column.tableName}.${column.columnName}`;
+        let columnAggregateExpression = `${column.tableName}.${column.columnName}`;
+
 
         // Handle Aggregates
-        if (column.Aggregate) {
+        if (column.Aggregate && column.Aggregate !== AGGREGATE_TYPES.NONE) {
             const aggregateFunction = column.Aggregate;
-            columnExpression = `${aggregateFunction}(${columnExpression})`;
+            columnAggregateExpression = `${aggregateFunction}(${columnExpression})`;
+            AggregateByColumns.push(columnAggregateExpression);
         }
 
         // Handle Grouping
@@ -77,17 +81,20 @@ function queryBuilder(configurableColumns: ConfigurableColumnProperties[]): stri
         // Handle Alias
         if (column.alias) {
             columnExpression = `${columnExpression} AS "${column.alias}"`;
+            columnAggregateExpression = `${columnAggregateExpression} AS ${column.alias}`;
         }
 
         // Add the column expression and its sortOrder to selectColumns
         selectColumns.push({column: columnExpression, sortOrder: column.sortOrder ?? 0});
+        selectAggregateColumns.push({column: columnAggregateExpression, sortOrder: column.sortOrder ?? 0});
     });
 
     // Sort selectColumns by sortOrder (ascending order)
     selectColumns.sort((a, b) => a.sortOrder - b.sortOrder);
+    selectAggregateColumns.sort((a, b) => a.sortOrder - b.sortOrder);
 
     // Construct the SELECT clause with sorted selectColumns
-    const selectClause = `SELECT ${selectColumns.map(col => col.column).join(', ')}`;
+    const selectClause = `SELECT ${selectAggregateColumns.map(col => col.column).join(', ')}`;
 
     // Construct the FROM clause (this will include all tables from `fromTables`)
     const fromClause = `FROM ${Array.from(fromTables).join(', ')}`;
