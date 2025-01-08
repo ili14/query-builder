@@ -33,7 +33,14 @@ const listOfTablesWithColumns: TableWithColumns[] = [
         id: 0,
         name: 'users',
         columns: [
-            { name: 'id' },
+            {
+                name: 'id', relationship: [
+                    { targetColumn: 'userId', targetTable: 'notifications' },
+                    { targetColumn: 'userId', targetTable: 'addresses' },
+                    { targetColumn: 'userId', targetTable: 'orders' },
+                    { targetColumn: 'userId', targetTable: 'wishlists' },
+                ],
+            },
             { name: 'name' },
             { name: 'email', description: 'this is a email of user' }, // example additional column
             { name: 'createdAt' }, // example additional column
@@ -45,7 +52,7 @@ const listOfTablesWithColumns: TableWithColumns[] = [
         columns: [
             { name: 'id' },
             { name: 'imageName' },
-            { name: 'userId', relationship: [{ targetColumn: 'id', targetTable: 'users' }] }, // userId references users table
+            { name: 'userId', relationship: [] }, // userId references users table
             { name: 'imageUrl' }, // example additional column
         ],
     },
@@ -93,7 +100,7 @@ const listOfTablesWithColumns: TableWithColumns[] = [
         columns: [
             { name: 'id' },
             { name: 'message' },
-            { name: 'userId', relationship: [{ targetColumn: 'id', targetTable: 'users' }] },
+            { name: 'userId', relationship: [] },
             { name: 'timestamp' },
         ],
     },
@@ -102,7 +109,7 @@ const listOfTablesWithColumns: TableWithColumns[] = [
         name: 'addresses',
         columns: [
             { name: 'id' },
-            { name: 'userId', relationship: [{ targetColumn: 'id', targetTable: 'users' }] },
+            { name: 'userId', relationship: [] },
             { name: 'address' },
         ],
     },
@@ -121,7 +128,7 @@ const listOfTablesWithColumns: TableWithColumns[] = [
         name: 'orders',
         columns: [
             { name: 'id' },
-            { name: 'userId', relationship: [{ targetColumn: 'id', targetTable: 'users' }] },
+            { name: 'userId', relationship: [] },
             { name: 'totalAmount' },
             { name: 'status' },
         ],
@@ -131,7 +138,7 @@ const listOfTablesWithColumns: TableWithColumns[] = [
         name: 'wishlists',
         columns: [
             { name: 'id' },
-            { name: 'userId', relationship: [{ targetColumn: 'id', targetTable: 'users' }] },
+            { name: 'userId', relationship: [] },
             { name: 'productId', relationship: [{ targetColumn: 'id', targetTable: 'products' }] }, // productId references products table
         ],
     },
@@ -431,6 +438,7 @@ function TableListSection({
         }>
             {tables?.map((table, index) => {
                 const haveRelationshipWithTable = relationWithTables.includes(table.name);
+                const isSelectedTable = selectedTable?.name === table.name;
                 return (
                     <ListItem
                         key={index}
@@ -448,12 +456,12 @@ function TableListSection({
                         }}
                         draggable
                         disablePadding
-                        className={'relative [&:last-child>.line]:hidden bg-transparent active:bg-blue-50'}>
+                        className={`relative [&:last-child>.line]:hidden bg-transparent active:bg-blue-50 ${isSelectedTable && "bg-blue-200"}`}>
                         <ListItemButton>
                             <ListItemIcon className="!text-blue-500 ">
                                 <FaTable />
                             </ListItemIcon>
-                            <ListItemText className={haveRelationshipWithTable ? 'font-bold text-blue-500' : ''}
+                            <ListItemText primaryTypographyProps={{fontWeight: haveRelationshipWithTable ? 'bold' : 'normal'}} className={haveRelationshipWithTable ? 'text-blue-500 ' : ''}
                                           primary={table.name} />
                         </ListItemButton>
                         <div className="h-[1px] bg-blue-500 absolute bottom-0 left-4 right-4 opacity-20 line"></div>

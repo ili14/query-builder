@@ -78,7 +78,7 @@ export default function DiagramSection({tables, onDrop}: DiagramSectionProps) {
         const newEdges: MyEdge[] = tables.flatMap((table) => {
             return table?.columns?.flatMap((column) => (column.relationship?.flatMap((rel) => {
                 return {
-                    id: `${table.name}-${column.name}`,
+                    id: `${table.name}-${column.name}-${rel.targetTable}-${rel.targetColumn}`,
                     source: table.name,
                     target: rel.targetTable,
                     sourceHandle: column.name,
